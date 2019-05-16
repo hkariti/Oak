@@ -1,5 +1,6 @@
 oak.iml
 .idea/
+.*.swp
 
 # Compiled class file
 *.class
