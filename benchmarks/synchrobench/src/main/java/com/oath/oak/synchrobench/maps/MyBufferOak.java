@@ -6,7 +6,6 @@ import com.oath.oak.OakSerializer;
 import java.nio.ByteBuffer;
 
 class MyBufferOak {
-
     static OakSerializer<MyBuffer> serializer = new OakSerializer<MyBuffer>() {
 
         @Override
