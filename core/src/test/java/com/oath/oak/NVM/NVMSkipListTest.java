@@ -54,5 +54,75 @@ public class NVMSkipListTest {
 
         assertTrue(retValue.compareTo(value2) == 0);
     }
+
+    @Test
+    public void testPutIfAbsentMissingKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
+
+        skipList.putIfAbsentOak(key, value);
+        ByteBuffer retValue = skipList.getOak(key);
+
+        assertTrue(retValue.compareTo(value) == 0);
+    }
+
+    @Test
+    public void testPutIfAbsentExistingKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
+        ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
+
+        skipList.putOak(key, value);
+        skipList.putIfAbsentOak(key, value2);
+        ByteBuffer retValue = skipList.getOak(key);
+
+        assertTrue(retValue.compareTo(value) == 0);
+    }
+
+    @Test
+    public void testRemoveExistingKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
+
+        skipList.putOak(key, value);
+        skipList.removeOak(key);
+        ByteBuffer retValue = skipList.getOak(key);
+
+        assertEquals(null, retValue);
+    }
+
+    @Test
+    public void testRemoveUpdatedKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
+        ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
+
+        skipList.putOak(key, value);
+        skipList.putOak(key, value2);
+        skipList.removeOak(key);
+        ByteBuffer retValue = skipList.getOak(key);
+
+        assertEquals(null, retValue);
+    }
+
+    @Test
+    public void testRemoveMissingKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+
+        skipList.removeOak(key);
+        ByteBuffer retValue = skipList.getOak(key);
+
+        assertEquals(null, retValue);
+    }
 }
 
