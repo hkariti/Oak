@@ -62,10 +62,11 @@ public class NVMSkipListTest {
         int key = 234;
         ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
 
-        skipList.putIfAbsentOak(key, value);
+        boolean ret = skipList.putIfAbsentOak(key, value);
         ByteBuffer retValue = skipList.getOak(key);
 
         assertTrue(retValue.compareTo(value) == 0);
+        assertTrue(ret);
     }
 
     @Test
@@ -77,10 +78,11 @@ public class NVMSkipListTest {
         ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
 
         skipList.putOak(key, value);
-        skipList.putIfAbsentOak(key, value2);
+        boolean ret = skipList.putIfAbsentOak(key, value2);
         ByteBuffer retValue = skipList.getOak(key);
 
         assertTrue(retValue.compareTo(value) == 0);
+        assertFalse(ret);
     }
 
     @Test
