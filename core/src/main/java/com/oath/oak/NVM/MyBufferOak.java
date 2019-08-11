@@ -12,27 +12,26 @@ class MyBufferOak {
         public void serialize(ByteBuffer key, ByteBuffer targetBuffer) {
             int cap = key.capacity();
             int pos = targetBuffer.position();
-            // write the capacity in the beginning of the buffer
-            targetBuffer.putInt(pos, cap);
+
             for (int i = 0; i < cap; i += 1) {
-                targetBuffer.put(pos + Integer.BYTES + i, key.get(i));
+                targetBuffer.put(pos + i, key.get(i));
             }
         }
 
         @Override
         public ByteBuffer deserialize(ByteBuffer serializedKey) {
             int pos = serializedKey.position();
-            int cap = serializedKey.getInt(pos);
+            int cap = serializedKey.capacity();
             ByteBuffer ret = ByteBuffer.allocate(cap);
             for (int i = 0; i < cap; i += 1) {
-                ret.put(i, serializedKey.get(pos + Integer.BYTES + i));
+                ret.put(i, serializedKey.get(pos + i));
             }
             return ret;
         }
 
         @Override
         public int calculateSize(ByteBuffer object) {
-            return object.capacity() + Integer.BYTES;
+            return object.capacity();
         }
     };
 }
