@@ -62,11 +62,13 @@ class NVMObjectManager {
         allocator = new MMAPAllocator(path, capacity);
     }
     public NVMObject allocate(int size) {
-        ByteBuffer buffer = allocator.allocate(size + Long.BYTES);
-        buffer.putInt(0, size);
-        int pointer = allocatedCount;
-        allocatedCount++;
-        return new NVMObject(pointer, buffer);
+        synchronized (mapping) {
+            ByteBuffer buffer = allocator.allocate(size + Long.BYTES);
+            buffer.putInt(0, size);
+            int pointer = allocatedCount;
+            allocatedCount++;
+            return new NVMObject(pointer, buffer);
+        }
     }
 
     public void flush() {

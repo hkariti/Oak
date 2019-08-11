@@ -49,38 +49,57 @@ public class NVMSkipList {
         MyBufferOak.serializer.serialize(value, valueBuffer);
         objectManager.flush();
 
-        SkipListEntry entry = skipListMap.get(key);
-        int mapEntry;
-        if (entry == null) {
-            ByteBuffer keyBuffer = ByteBuffer.allocate(7);
-            keyBuffer.putInt(key);
-            mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
-            objectManager.flush();
-        } else {
-            mapEntry = entry.mapEntry;
-            recoveryMap.pointer(mapEntry, (byte)valuePointer);
-            objectManager.flush();
+        synchronized (skipListMap) {
+            SkipListEntry entry = skipListMap.get(key);
+            int mapEntry;
+            if (entry == null) {
+                ByteBuffer keyBuffer = ByteBuffer.allocate(7);
+                keyBuffer.putInt(key);
+                mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
+                objectManager.flush();
+            } else {
+                mapEntry = entry.mapEntry;
+                recoveryMap.pointer(mapEntry, (byte)valuePointer);
+                objectManager.flush();
+            }
+            entry = new SkipListEntry(mapEntry, value);
+            skipListMap.put(key, entry);
         }
-        entry = new SkipListEntry(mapEntry, value);
-        skipListMap.put(key, entry);
     }
 
     public boolean putIfAbsentOak(Integer key, ByteBuffer value) {
-        if (skipListMap.containsKey(key)) {
-            return false;
+        synchronized (skipListMap) {
+            SkipListEntry entry = skipListMap.get(key);
+            if (entry != null) {
+                return false;
+            }
+            NVMObject valueObject = objectManager.allocate(MyBufferOak.serializer.calculateSize(value));
+            int valuePointer = valueObject.pointer;
+            ByteBuffer valueBuffer = valueObject.buffer;
+            MyBufferOak.serializer.serialize(value, valueBuffer);
+            objectManager.flush();
+
+            ByteBuffer keyBuffer = ByteBuffer.allocate(7);
+            keyBuffer.putInt(key);
+            int mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
+            objectManager.flush();
+
+            entry = new SkipListEntry(mapEntry, value);
+            skipListMap.put(key, entry);
+
+            return true;
         }
-        putOak(key, value);
-        return true;
     }
 
     public void removeOak(Integer key) {
-        SkipListEntry entry = skipListMap.get(key);
-        if (entry == null) {
-            return;
+        synchronized (skipListMap) {
+            SkipListEntry oldEntry = skipListMap.remove(key);
+            if (oldEntry == null) {
+                return;
+            }
+            recoveryMap.disable(oldEntry.mapEntry);
+            objectManager.flush();
         }
-        recoveryMap.disable(entry.mapEntry);
-        objectManager.flush();
-        skipListMap.remove(key);
     }
 
     public boolean computeIfPresentOak(Integer key) {
@@ -112,8 +131,11 @@ public class NVMSkipList {
     }
 
     public void clear() {
-        recoveryMap.clear();
-        objectManager.flush();
+        synchronized (skipListMap) {
+            skipListMap.clear();
+            recoveryMap.clear();
+            objectManager.flush();
+        }
     }
 
     public int size() {
