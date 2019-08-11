@@ -74,10 +74,6 @@ class NVMObjectManager {
     }
 
     public void free(int object) {
-        ByteBuffer objectBuffer = get(object);
-        byte firstByte = objectBuffer.get(0);
-        firstByte &= 0x01111111;
-        objectBuffer.put(0, firstByte);
     }
 
     public ByteBuffer get(int object) throws IllegalArgumentException {
