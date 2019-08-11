@@ -61,11 +61,12 @@ class NVMObjectManager {
     NVMObjectManager(String path, int capacity) throws IOException {
         allocator = new MMAPAllocator(path, capacity);
     }
-    public int allocate(int size) {
+    public NVMObject allocate(int size) {
         ByteBuffer buffer = allocator.allocate(size + Long.BYTES);
         buffer.putInt(0, size);
+        int pointer = allocatedCount;
         allocatedCount++;
-        return allocatedCount - 1;
+        return new NVMObject(pointer, buffer);
     }
 
     public void flush() {

@@ -7,8 +7,17 @@ import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 public class NVMSkipList {
+    class SkipListEntry {
+        public final int mapEntry;
+        public final ByteBuffer value;
+
+        SkipListEntry(int mapEntry, ByteBuffer value) {
+            this.mapEntry = mapEntry;
+            this.value = value;
+        }
+    }
     static final int INIT_ENTRY_COUNT = 5;
-    private ConcurrentSkipListMap<Integer, Integer> skipListMap;
+    private ConcurrentSkipListMap<Integer, SkipListEntry> skipListMap;
     private NVMObjectManager objectManager;
     Comparator<Object> comparator;
     EntryKeyList recoveryMap;
@@ -18,39 +27,42 @@ public class NVMSkipList {
         objectManager = new NVMObjectManager("test.dat", Integer.MAX_VALUE);
 
         // Create the recovery map
-        objectManager.allocate(INIT_ENTRY_COUNT * EntryKeyList.ENTRY_SIZE);
-        recoveryMap = new EntryKeyList(objectManager.get(0));
+        NVMObject mapObject = objectManager.allocate(INIT_ENTRY_COUNT * EntryKeyList.ENTRY_SIZE);
+        recoveryMap = new EntryKeyList(mapObject.buffer);
     }
 
     public ByteBuffer getOak(Integer key) {
-        Integer mapEntry = skipListMap.get(key);
-        if (mapEntry == null) {
+        SkipListEntry entry = skipListMap.get(key);
+        if (entry == null) {
             return null;
         }
 
-        int valuePointer = recoveryMap.pointer(mapEntry);
-        ByteBuffer serializedValue = objectManager.get(valuePointer);
+        ByteBuffer serializedValue = entry.value;
 
         return MyBufferOak.serializer.deserialize(serializedValue);
     }
 
     public void putOak(Integer key, ByteBuffer value) {
-        int valuePointer = objectManager.allocate(MyBufferOak.serializer.calculateSize(value));
-        ByteBuffer valueBuffer = objectManager.get(valuePointer);
+        NVMObject valueObject = objectManager.allocate(MyBufferOak.serializer.calculateSize(value));
+        int valuePointer = valueObject.pointer;
+        ByteBuffer valueBuffer = valueObject.buffer;
         MyBufferOak.serializer.serialize(value, valueBuffer);
         objectManager.flush();
 
-        Integer mapEntry = skipListMap.get(key);
-        if (mapEntry == null) {
+        SkipListEntry entry = skipListMap.get(key);
+        int mapEntry;
+        if (entry == null) {
             ByteBuffer keyBuffer = ByteBuffer.allocate(7);
             keyBuffer.putInt(key);
             mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
             objectManager.flush();
-            skipListMap.put(key, mapEntry);
         } else {
+            mapEntry = entry.mapEntry;
             recoveryMap.pointer(mapEntry, (byte)valuePointer);
             objectManager.flush();
         }
+        entry = new SkipListEntry(mapEntry, value);
+        skipListMap.put(key, entry);
     }
 
     public boolean putIfAbsentOak(Integer key, ByteBuffer value) {
@@ -62,11 +74,11 @@ public class NVMSkipList {
     }
 
     public void removeOak(Integer key) {
-        Integer mapEntry = skipListMap.get(key);
-        if (mapEntry == null) {
+        SkipListEntry entry = skipListMap.get(key);
+        if (entry == null) {
             return;
         }
-        recoveryMap.disable(mapEntry);
+        recoveryMap.disable(entry.mapEntry);
         objectManager.flush();
         skipListMap.remove(key);
     }
