@@ -10,6 +10,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.ByteBuffer;
 import java.lang.IllegalArgumentException;
 import java.lang.IndexOutOfBoundsException;
+import java.lang.ThreadLocal;
 
 import com.oath.oak.OakMemoryAllocator;
 import com.oath.oak.OakOutOfMemoryException;
@@ -17,8 +18,14 @@ import com.oath.oak.OakOutOfMemoryException;
 class NVMObjectManager {
     final Path path;
     final FileChannel fc;
-    MappedByteBuffer mapping;
-    BoundedAtomicInteger position;
+    final MappedByteBuffer mapping;
+    final BoundedAtomicInteger position;
+    private final ThreadLocal<ByteBuffer> mappingViewStorage =
+        new ThreadLocal<ByteBuffer>() {
+            @Override protected ByteBuffer initialValue() {
+                return mapping.duplicate();
+            }
+        };
 
     NVMObjectManager(String path, int capacity) throws IOException {
         this.path = Paths.get(path);
@@ -36,7 +43,7 @@ class NVMObjectManager {
             throw new OakOutOfMemoryException();
         }
         int endPosition = currentPosition + allocatedSize;
-        ByteBuffer mappingView = mapping.duplicate();
+        ByteBuffer mappingView = mappingViewStorage.get();
 
         mappingView.position(currentPosition);
         mappingView.limit(endPosition);
@@ -47,7 +54,9 @@ class NVMObjectManager {
     }
 
     public void flush() {
-        mapping.force();
+        synchronized (mapping) {
+            mapping.force();
+        }
     }
 
     public void free(int object) {
@@ -58,7 +67,8 @@ class NVMObjectManager {
             throw new IndexOutOfBoundsException();
         }
 
-        int size = mapping.getInt(pointer);
+        ByteBuffer readerMapping = mappingViewStorage.get();
+        int size = readerMapping.getInt(pointer);
         int startPosition = pointer + Integer.BYTES;
         int endPosition = startPosition + size;
 
@@ -66,7 +76,6 @@ class NVMObjectManager {
             throw new IndexOutOfBoundsException();
         }
 
-        ByteBuffer readerMapping = mapping.duplicate();
         readerMapping.position(startPosition);
         readerMapping.limit(endPosition);
         ByteBuffer objectBuffer = readerMapping.slice();
