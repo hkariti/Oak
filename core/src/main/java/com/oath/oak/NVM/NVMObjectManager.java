@@ -10,7 +10,6 @@ import java.nio.file.StandardOpenOption;
 import java.nio.ByteBuffer;
 import java.lang.IllegalArgumentException;
 import java.lang.IndexOutOfBoundsException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oath.oak.OakMemoryAllocator;
 import com.oath.oak.OakOutOfMemoryException;
@@ -19,31 +18,23 @@ class NVMObjectManager {
     final Path path;
     final FileChannel fc;
     MappedByteBuffer mapping;
-    AtomicInteger position;
+    BoundedAtomicInteger position;
 
     NVMObjectManager(String path, int capacity) throws IOException {
         this.path = Paths.get(path);
         fc = FileChannel.open(this.path, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.CREATE);
         mapping = fc.map(FileChannel.MapMode.READ_WRITE, 0, capacity);
-        position = new AtomicInteger();
-    }
-
-    private int getAndAddPosition(int addition) throws OakOutOfMemoryException {
-        int limit = mapping.capacity();
-        for (;;) {
-            int current = position.get();
-            int next = current + addition;
-            if (next > limit) {
-                throw new OakOutOfMemoryException();
-            }
-            if (position.compareAndSet(current, next))
-                return current;
-        }
+        position = new BoundedAtomicInteger(mapping.capacity());
     }
 
     public NVMObject allocate(int size) throws OakOutOfMemoryException {
         int allocatedSize = size + Integer.BYTES;
-        int currentPosition = getAndAddPosition(allocatedSize);
+        int currentPosition;
+        try {
+            currentPosition = position.getAndAddBounded(allocatedSize);
+        } catch (IllegalArgumentException e) {
+            throw new OakOutOfMemoryException();
+        }
         int endPosition = currentPosition + allocatedSize;
         ByteBuffer mappingView = mapping.duplicate();
 
