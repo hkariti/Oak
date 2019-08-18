@@ -9,96 +9,78 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.ByteBuffer;
 import java.lang.IllegalArgumentException;
+import java.lang.IndexOutOfBoundsException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oath.oak.OakMemoryAllocator;
 import com.oath.oak.OakOutOfMemoryException;
 
 class NVMObjectManager {
+    final Path path;
+    final FileChannel fc;
     MappedByteBuffer mapping;
-    MMAPAllocator allocator;
-    int allocatedCount = 0;
-
-    class MMAPAllocator implements OakMemoryAllocator {
-        final Path path;
-        final FileChannel fc;
-
-        public ByteBuffer allocate(int size) {
-            int currentPosition = mapping.position();
-            int endPosition = currentPosition + size;
-
-            try {
-                mapping.limit(endPosition);
-            } catch (IllegalArgumentException e) {
-                throw new OakOutOfMemoryException();
-            }
-            ByteBuffer newBuffer = mapping.slice();
-            mapping.limit(mapping.capacity());
-            mapping.position(endPosition);
-            return newBuffer;
-        }
-
-        public void flush() {
-            mapping.force();
-        }
-
-        public void free(ByteBuffer bb) {
-        }
-
-        public void close() {
-        }
-
-        public long allocated() {
-            return mapping.position();
-        }
-
-        public MMAPAllocator(String path, int capacity) throws IOException {
-            this.path = Paths.get(path);
-            fc = FileChannel.open(this.path, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.CREATE);
-            mapping = fc.map(FileChannel.MapMode.READ_WRITE, 0, capacity);
-        }
-    }
+    AtomicInteger position;
 
     NVMObjectManager(String path, int capacity) throws IOException {
-        allocator = new MMAPAllocator(path, capacity);
+        this.path = Paths.get(path);
+        fc = FileChannel.open(this.path, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.CREATE);
+        mapping = fc.map(FileChannel.MapMode.READ_WRITE, 0, capacity);
+        position = new AtomicInteger();
     }
-    public NVMObject allocate(int size) {
-        synchronized (mapping) {
-            ByteBuffer buffer = allocator.allocate(size + Long.BYTES);
-            buffer.putInt(0, size);
-            int pointer = allocatedCount;
-            allocatedCount++;
-            return new NVMObject(pointer, buffer);
+
+    private int getAndAddPosition(int addition) throws OakOutOfMemoryException {
+        int limit = mapping.capacity();
+        for (;;) {
+            int current = position.get();
+            int next = current + addition;
+            if (next > limit) {
+                throw new OakOutOfMemoryException();
+            }
+            if (position.compareAndSet(current, next))
+                return current;
         }
+    }
+
+    public NVMObject allocate(int size) throws OakOutOfMemoryException {
+        int allocatedSize = size + Integer.BYTES;
+        int currentPosition = getAndAddPosition(allocatedSize);
+        int endPosition = currentPosition + allocatedSize;
+        ByteBuffer mappingView = mapping.duplicate();
+
+        mappingView.position(currentPosition);
+        mappingView.limit(endPosition);
+        ByteBuffer newBuffer = mappingView.slice();
+        newBuffer.putInt(0, size);
+
+        return new NVMObject(currentPosition, newBuffer);
     }
 
     public void flush() {
-        allocator.flush();
+        mapping.force();
     }
 
     public void free(int object) {
     }
 
-    public ByteBuffer get(int object) throws IllegalArgumentException {
-        if (object >= allocatedCount) {
-            throw new IllegalArgumentException("No such object");
+    public ByteBuffer get(int pointer) throws IndexOutOfBoundsException {
+        if (pointer >= mapping.capacity()) {
+            throw new IndexOutOfBoundsException();
         }
 
-        int offset = 0;
-        for (int i=0; i < object; i++) {
-            offset += mapping.getInt(offset) + Long.BYTES;
+        int size = mapping.getInt(pointer);
+        int startPosition = pointer + Integer.BYTES;
+        int endPosition = startPosition + size;
+
+        if (endPosition >= mapping.capacity()) {
+            throw new IndexOutOfBoundsException();
         }
 
-        int size = mapping.getInt(offset);
         ByteBuffer readerMapping = mapping.duplicate();
-        readerMapping.position(offset + Long.BYTES);
-        readerMapping.limit(offset + Long.BYTES + size);
+        readerMapping.position(startPosition);
+        readerMapping.limit(endPosition);
         ByteBuffer objectBuffer = readerMapping.slice();
 
         return objectBuffer;
-    }
-
-    public long allocated() {
-        return allocatedCount;
     }
 }
 
