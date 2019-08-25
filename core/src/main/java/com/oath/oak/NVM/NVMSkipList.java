@@ -2,38 +2,44 @@ package com.oath.oak.NVM;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 public class NVMSkipList {
     class SkipListEntry {
-        public final int mapEntry;
-        public final ByteBuffer value;
+        public int logEntry;
+        public ByteBuffer value;
 
-        SkipListEntry(int mapEntry, ByteBuffer value) {
-            this.mapEntry = mapEntry;
+        SkipListEntry(int logEntry, ByteBuffer value) {
+            this.logEntry = logEntry;
             this.value = value;
         }
+
+        synchronized void writeMax(int newLogEntry, ByteBuffer newValue) {
+            if (newLogEntry <= logEntry)  {
+                return;
+            }
+            logEntry = newLogEntry;
+            value = newValue;
+        }
     }
-    static final int INIT_ENTRY_COUNT = 5;
-    private ConcurrentSkipListMap<Integer, SkipListEntry> skipListMap;
-    private NVMObjectManager objectManager;
-    Comparator<Object> comparator;
-    EntryKeyList recoveryMap;
+    static final int INIT_ENTRY_COUNT = 1024;
+    private final ConcurrentSkipListMap<Integer, SkipListEntry> skipListMap;
+    private final NVMObjectManager objectManager;
+    private final ActionLog actionLog;
 
     public NVMSkipList() throws IOException {
         skipListMap = new ConcurrentSkipListMap<>();
         objectManager = new NVMObjectManager("test.dat", Integer.MAX_VALUE);
 
         // Create the recovery map
-        NVMObject mapObject = objectManager.allocate(INIT_ENTRY_COUNT * EntryKeyList.ENTRY_SIZE);
-        recoveryMap = new EntryKeyList(mapObject.buffer);
+        NVMObject logObject = objectManager.allocate(INIT_ENTRY_COUNT * ActionLog.ENTRY_SIZE);
+        actionLog = new ActionLog(logObject.buffer);
     }
 
     public ByteBuffer getOak(Integer key) {
         SkipListEntry entry = skipListMap.get(key);
-        if (entry == null) {
+        if (entry == null || entry.value == null) {
             return null;
         }
 
@@ -49,57 +55,32 @@ public class NVMSkipList {
         MyBufferOak.serializer.serialize(value, valueBuffer);
         objectManager.flush();
 
-        synchronized (skipListMap) {
-            SkipListEntry entry = skipListMap.get(key);
-            int mapEntry;
-            if (entry == null) {
-                ByteBuffer keyBuffer = ByteBuffer.allocate(7);
-                keyBuffer.putInt(key);
-                mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
-                objectManager.flush();
-            } else {
-                mapEntry = entry.mapEntry;
-                recoveryMap.pointer(mapEntry, (byte)valuePointer);
-                objectManager.flush();
-            }
-            entry = new SkipListEntry(mapEntry, value);
-            skipListMap.put(key, entry);
-        }
+        int logEntryNumber = actionLog.put(valuePointer, key);
+        objectManager.flush();
+
+        SkipListEntry indexEntry = new SkipListEntry(logEntryNumber, value);
+        writeMaxSkipListEntry(key, indexEntry);
     }
 
     public boolean putIfAbsentOak(Integer key, ByteBuffer value) {
-        synchronized (skipListMap) {
-            SkipListEntry entry = skipListMap.get(key);
-            if (entry != null) {
-                return false;
-            }
-            NVMObject valueObject = objectManager.allocate(MyBufferOak.serializer.calculateSize(value));
-            int valuePointer = valueObject.pointer;
-            ByteBuffer valueBuffer = valueObject.buffer;
-            MyBufferOak.serializer.serialize(value, valueBuffer);
-            objectManager.flush();
-
-            ByteBuffer keyBuffer = ByteBuffer.allocate(7);
-            keyBuffer.putInt(key);
-            int mapEntry = recoveryMap.newEntry((byte)valuePointer, keyBuffer.array());
-            objectManager.flush();
-
-            entry = new SkipListEntry(mapEntry, value);
-            skipListMap.put(key, entry);
-
-            return true;
-        }
+        return false;
     }
 
     public void removeOak(Integer key) {
-        synchronized (skipListMap) {
-            SkipListEntry oldEntry = skipListMap.remove(key);
-            if (oldEntry == null) {
-                return;
-            }
-            recoveryMap.disable(oldEntry.mapEntry);
-            objectManager.flush();
+        int logEntryNumber = actionLog.put(ActionLog.DELETED, key);
+        objectManager.flush();
+
+        SkipListEntry indexEntry = new SkipListEntry(logEntryNumber, null);
+        writeMaxSkipListEntry(key, indexEntry);
+    }
+
+    private void writeMaxSkipListEntry(int key, SkipListEntry entry) {
+        SkipListEntry existingEntry = skipListMap.putIfAbsent(key, entry);
+        if (existingEntry == null) {
+            return;
         }
+
+        existingEntry.writeMax(entry.logEntry, entry.value);
     }
 
     public boolean computeIfPresentOak(Integer key) {
@@ -131,9 +112,9 @@ public class NVMSkipList {
     }
 
     public void clear() {
+        // TODO: Fix
         synchronized (skipListMap) {
             skipListMap.clear();
-            recoveryMap.clear();
             objectManager.flush();
         }
     }

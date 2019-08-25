@@ -8,6 +8,7 @@ import java.lang.IllegalArgumentException;
 
 class ActionLog {
     static final int ENTRY_SIZE = Long.BYTES;
+    static final int DELETED = 0;
     final LongBuffer logBuffer;
     final AtomicInteger next;
     // Have a global, synchronized list of entries for writing and a thread-local list for reading.

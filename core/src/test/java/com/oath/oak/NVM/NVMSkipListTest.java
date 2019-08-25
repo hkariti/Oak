@@ -56,36 +56,6 @@ public class NVMSkipListTest {
     }
 
     @Test
-    public void testPutIfAbsentMissingKey() throws Exception {
-        skipList = new NVMSkipList();
-        skipList.clear();
-        int key = 234;
-        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
-
-        boolean ret = skipList.putIfAbsentOak(key, value);
-        ByteBuffer retValue = skipList.getOak(key);
-
-        assertTrue(retValue.compareTo(value) == 0);
-        assertTrue(ret);
-    }
-
-    @Test
-    public void testPutIfAbsentExistingKey() throws Exception {
-        skipList = new NVMSkipList();
-        skipList.clear();
-        int key = 234;
-        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
-        ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
-
-        skipList.putOak(key, value);
-        boolean ret = skipList.putIfAbsentOak(key, value2);
-        ByteBuffer retValue = skipList.getOak(key);
-
-        assertTrue(retValue.compareTo(value) == 0);
-        assertFalse(ret);
-    }
-
-    @Test
     public void testRemoveExistingKey() throws Exception {
         skipList = new NVMSkipList();
         skipList.clear();
