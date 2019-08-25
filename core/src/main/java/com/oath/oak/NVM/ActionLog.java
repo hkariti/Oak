@@ -47,6 +47,14 @@ class ActionLog {
         return logBuffer.capacity();
     }
 
+    public void clear() {
+        // This method is NOT thread-safe
+        next.set(0);
+        for (LongBuffer entry : writableEntries) {
+            entry.put(0);
+        }
+    }
+
     public ActionLogEntry get(int position) {
         long entry = readonlyEntriesStorage.get().get(position).get(0);
         if (!isValid(entry)) {

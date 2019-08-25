@@ -112,9 +112,9 @@ public class NVMSkipList {
     }
 
     public void clear() {
-        // TODO: Fix
         synchronized (skipListMap) {
             skipListMap.clear();
+            actionLog.clear();
             objectManager.flush();
         }
     }
