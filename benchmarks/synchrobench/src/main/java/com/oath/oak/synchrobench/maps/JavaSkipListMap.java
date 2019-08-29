@@ -1,12 +1,13 @@
 package com.oath.oak.synchrobench.maps;
 
+import java.nio.ByteBuffer;
 import com.oath.oak.synchrobench.contention.abstractions.CompositionalOakMap;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 public class JavaSkipListMap<K, V> implements CompositionalOakMap<K, V> {
 
-    private ConcurrentSkipListMap<MyBuffer, MyBuffer> skipListMap;
+    private ConcurrentSkipListMap<Integer, ByteBuffer> skipListMap;
 
     public JavaSkipListMap() {
         skipListMap = new ConcurrentSkipListMap<>();
@@ -19,12 +20,12 @@ public class JavaSkipListMap<K, V> implements CompositionalOakMap<K, V> {
 
     @Override
     public void putOak(Object key, Object value) {
-        skipListMap.put((MyBuffer) key, (MyBuffer) value);
+        skipListMap.put((int) key, (ByteBuffer) value);
     }
 
     @Override
     public boolean putIfAbsentOak(Object key, Object value) {
-        return skipListMap.putIfAbsent((MyBuffer) key, (MyBuffer) value) == null;
+        return skipListMap.putIfAbsent((int) key, (ByteBuffer) value) == null;
     }
 
     @Override
@@ -44,7 +45,7 @@ public class JavaSkipListMap<K, V> implements CompositionalOakMap<K, V> {
 
     @Override
     public boolean ascendOak(K from, int length) {
-        Iterator iter = skipListMap.tailMap((MyBuffer) from, true).keySet().iterator();
+        Iterator iter = skipListMap.tailMap((Integer)from, true).keySet().iterator();
         int i = 0;
         while (iter.hasNext() && i < length) {
             i++;
@@ -55,7 +56,7 @@ public class JavaSkipListMap<K, V> implements CompositionalOakMap<K, V> {
 
     @Override
     public boolean descendOak(K from, int length) {
-        Iterator iter = skipListMap.descendingMap().tailMap((MyBuffer) from, true).keySet().iterator();
+        Iterator iter = skipListMap.descendingMap().tailMap((Integer)from, true).keySet().iterator();
         int i = 0;
         while (iter.hasNext() && i < length) {
             i++;

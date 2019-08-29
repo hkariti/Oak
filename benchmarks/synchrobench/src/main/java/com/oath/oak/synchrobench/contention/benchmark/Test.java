@@ -3,8 +3,8 @@ package com.oath.oak.synchrobench.contention.benchmark;
 import com.oath.oak.synchrobench.contention.abstractions.CompositionalMap;
 import com.oath.oak.synchrobench.contention.abstractions.CompositionalOakMap;
 import com.oath.oak.synchrobench.contention.abstractions.MaintenanceAlg;
-import com.oath.oak.synchrobench.maps.MyBuffer;
 
+import java.nio.ByteBuffer;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Formatter;
@@ -52,7 +52,7 @@ public class Test {
 	private long aborts = 0;
 	/** The instance of the benchmark */
 	private Type benchType = null;
-	private CompositionalOakMap<MyBuffer, MyBuffer> oakBench = null;
+	private CompositionalOakMap<Integer, ByteBuffer> oakBench = null;
 	/** The instance of the benchmark */
 	/** The benchmark methods */
 	private Method[] methods;
@@ -74,10 +74,9 @@ public class Test {
 			Integer v = s_random.get().nextInt(range);
 			switch(benchType) {
 			case OAKMAP:
-			    MyBuffer key = new MyBuffer(Parameters.keySize);
-			    key.buffer.putInt(0,v);
-                MyBuffer val = new MyBuffer(Parameters.valSize);
-                val.buffer.putInt(0,v);
+			    int key = v;
+                ByteBuffer val = ByteBuffer.allocate(Parameters.valSize);
+                val.putInt(0,v);
 				if (oakBench.putIfAbsentOak(key, val)) {
 					i--;
 				}
@@ -105,7 +104,7 @@ public class Test {
 			methods = benchClass.getDeclaredMethods();
 			
             if (CompositionalOakMap.class.isAssignableFrom(benchClass)) {
-				oakBench = (CompositionalOakMap<MyBuffer, MyBuffer>) c.newInstance();
+				oakBench = (CompositionalOakMap<Integer, ByteBuffer>) c.newInstance();
 				benchType = Type.OAKMAP;
 			}
 			

@@ -46,7 +46,7 @@ declare -A scenarios=(["get-only"]=""
 
 # Oak vs JavaSkipList
 benchClassPrefix="com.oath.oak.synchrobench.maps"
-benchs="OakMap JavaSkipListMap JavaSkipListBBMap"
+benchs="JavaSkipListMap"
 
 summary="${output}/summary.csv"
 

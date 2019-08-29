@@ -2,8 +2,8 @@ package com.oath.oak.synchrobench.contention.benchmark;
 
 
 import com.oath.oak.synchrobench.contention.abstractions.CompositionalOakMap;
-import com.oath.oak.synchrobench.maps.MyBuffer;
 
+import java.nio.ByteBuffer;
 import java.lang.reflect.Method;
 import java.util.Random;
 
@@ -18,7 +18,7 @@ public class ThreadLoopOak implements Runnable {
     /**
      * The instance of the running benchmark
      */
-    public CompositionalOakMap<MyBuffer, MyBuffer> bench;
+    public CompositionalOakMap<Integer, ByteBuffer> bench;
     /**
      * The stop flag, indicating whether the loop is over
      */
@@ -72,7 +72,7 @@ public class ThreadLoopOak implements Runnable {
     int[] cdf = new int[3];
 
     public ThreadLoopOak(short myThreadNum,
-                         CompositionalOakMap<MyBuffer, MyBuffer> bench, Method[] methods) {
+                         CompositionalOakMap<Integer, ByteBuffer> bench, Method[] methods) {
         this.myThreadNum = myThreadNum;
         this.bench = bench;
         this.methods = methods;
@@ -93,12 +93,12 @@ public class ThreadLoopOak implements Runnable {
         int size = 100;
 
 
-        MyBuffer key = new MyBuffer(Parameters.keySize);
+        int key;
 
         Integer newInt = -1;
         while (!stop) {
             newInt = (Parameters.keyDistribution == Parameters.KeyDist.RANDOM) ? rand.nextInt(Parameters.range) : newInt + 1;
-            key.buffer.putInt(0, newInt);
+            key = newInt;
 
             int coin = rand.nextInt(1000);
             if (coin < cdf[0]) { // -a
@@ -113,10 +113,10 @@ public class ThreadLoopOak implements Runnable {
                     }
                 }
             } else if (coin < cdf[1]) { // -u
-                MyBuffer newKey = new MyBuffer(Parameters.keySize);
-                MyBuffer newVal = new MyBuffer(Parameters.valSize);
-                newKey.buffer.putInt(0,newInt);
-                newVal.buffer.putInt(0,newInt);
+                int newKey;
+                ByteBuffer newVal = ByteBuffer.allocate(Parameters.valSize);
+				newKey = newInt;
+                newVal.putInt(0,newInt);
                 if (!change) {
                     bench.putOak(newKey,newVal);
                     numAdd++;
