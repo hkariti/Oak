@@ -22,7 +22,7 @@ public class NVMSkipListTest {
         skipList.clear();
         int key = 123;
 
-        ByteBuffer value = skipList.getOak(key);
+        ByteBuffer value = skipList.get(key);
 
         assertEquals(value, null);
     }
@@ -34,8 +34,8 @@ public class NVMSkipListTest {
         int key = 234;
         ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
 
-        skipList.putOak(key, value);
-        ByteBuffer retValue = skipList.getOak(key);
+        skipList.put(key, value);
+        ByteBuffer retValue = skipList.get(key);
 
         assertTrue(retValue.compareTo(value) == 0);
     }
@@ -48,9 +48,9 @@ public class NVMSkipListTest {
         ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
         ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
 
-        skipList.putOak(key, value);
-        skipList.putOak(key, value2);
-        ByteBuffer retValue = skipList.getOak(key);
+        skipList.put(key, value);
+        skipList.put(key, value2);
+        ByteBuffer retValue = skipList.get(key);
 
         assertTrue(retValue.compareTo(value2) == 0);
     }
@@ -62,9 +62,9 @@ public class NVMSkipListTest {
         int key = 234;
         ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
 
-        skipList.putOak(key, value);
-        skipList.removeOak(key);
-        ByteBuffer retValue = skipList.getOak(key);
+        skipList.put(key, value);
+        skipList.remove(key);
+        ByteBuffer retValue = skipList.get(key);
 
         assertEquals(null, retValue);
     }
@@ -77,10 +77,10 @@ public class NVMSkipListTest {
         ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
         ByteBuffer value2 = ByteBuffer.wrap("123".getBytes());
 
-        skipList.putOak(key, value);
-        skipList.putOak(key, value2);
-        skipList.removeOak(key);
-        ByteBuffer retValue = skipList.getOak(key);
+        skipList.put(key, value);
+        skipList.put(key, value2);
+        skipList.remove(key);
+        ByteBuffer retValue = skipList.get(key);
 
         assertEquals(null, retValue);
     }
@@ -91,8 +91,8 @@ public class NVMSkipListTest {
         skipList.clear();
         int key = 234;
 
-        skipList.removeOak(key);
-        ByteBuffer retValue = skipList.getOak(key);
+        skipList.remove(key);
+        ByteBuffer retValue = skipList.get(key);
 
         assertEquals(null, retValue);
     }

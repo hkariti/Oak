@@ -37,7 +37,7 @@ public class NVMSkipList {
         actionLog = new ActionLog(logObject.buffer);
     }
 
-    public ByteBuffer getOak(Integer key) {
+    public ByteBuffer get(Integer key) {
         SkipListEntry entry = skipListMap.get(key);
         if (entry == null || entry.value == null) {
             return null;
@@ -48,7 +48,7 @@ public class NVMSkipList {
         return MyBufferOak.serializer.deserialize(serializedValue);
     }
 
-    public void putOak(Integer key, ByteBuffer value) {
+    public void put(Integer key, ByteBuffer value) {
         NVMObject valueObject = objectManager.allocate(MyBufferOak.serializer.calculateSize(value));
         int valuePointer = valueObject.pointer;
         ByteBuffer valueBuffer = valueObject.buffer;
@@ -62,11 +62,11 @@ public class NVMSkipList {
         writeMaxSkipListEntry(key, indexEntry);
     }
 
-    public boolean putIfAbsentOak(Integer key, ByteBuffer value) {
+    public boolean putIfAbsent(Integer key, ByteBuffer value) {
         return false;
     }
 
-    public void removeOak(Integer key) {
+    public void remove(Integer key) {
         int logEntryNumber = actionLog.put(ActionLog.DELETED, key);
         objectManager.flush();
 
@@ -83,15 +83,15 @@ public class NVMSkipList {
         existingEntry.writeMax(entry.logEntry, entry.value);
     }
 
-    public boolean computeIfPresentOak(Integer key) {
+    public boolean computeIfPresent(Integer key) {
         return false;
     }
 
-    public void computeOak(Integer key) {
+    public void compute(Integer key) {
 
     }
 
-    public boolean ascendOak(Integer from, int length) {
+    public boolean ascend(Integer from, int length) {
         Iterator iter = skipListMap.tailMap(from, true).keySet().iterator();
         int i = 0;
         while (iter.hasNext() && i < length) {
@@ -101,7 +101,7 @@ public class NVMSkipList {
         return i == length;
     }
 
-    public boolean descendOak(Integer from, int length) {
+    public boolean descend(Integer from, int length) {
         Iterator iter = skipListMap.descendingMap().tailMap(from, true).keySet().iterator();
         int i = 0;
         while (iter.hasNext() && i < length) {
