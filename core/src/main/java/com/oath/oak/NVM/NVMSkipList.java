@@ -67,6 +67,10 @@ public class NVMSkipList {
     }
 
     public void remove(Integer key) {
+        SkipListEntry entry = skipListMap.get(key);
+        if (entry == null || entry.value == null) {
+            return;
+        }
         int logEntryNumber = actionLog.put(ActionLog.DELETED, key);
         objectManager.flush();
 
