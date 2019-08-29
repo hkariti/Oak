@@ -54,9 +54,9 @@ class NVMObjectManager {
     }
 
     public void flush() {
-        synchronized (mapping) {
-            mapping.force();
-        }
+        //synchronized (mapping) {
+        mapping.force();
+        //}
     }
 
     public void free(int object) {

@@ -19,6 +19,7 @@ duration="30000"
 declare -A heap_limit=(["OakMap"]="8g"
                        ["JavaSkipListMap"]="20g"
                        ["JavaSkipListBBMap"]="8g"
+                       ["NVMSkipListMap"]="8g"
                       )
 
 directMemSize="12g"
@@ -34,9 +35,9 @@ fi
 # records all benchmark outputs
 ###############################
 
-declare -A scenarios=(["get-only"]=""
-                      ["ascend-only"]="-c"
-                      ["descend-only"]="-c -a 100"
+declare -A scenarios=(#["get-only"]=""
+                      #["ascend-only"]="-c"
+                      #["descend-only"]="-c -a 100"
                       ["put-only"]="-a 0 -u 100"
                      )
 
@@ -46,7 +47,7 @@ declare -A scenarios=(["get-only"]=""
 
 # Oak vs JavaSkipList
 benchClassPrefix="com.oath.oak.synchrobench.maps"
-benchs="JavaSkipListMap"
+benchs="NVMSkipListMap JavaSkipListMap"
 
 summary="${output}/summary.csv"
 
