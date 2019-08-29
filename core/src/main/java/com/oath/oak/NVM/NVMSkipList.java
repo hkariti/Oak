@@ -74,8 +74,8 @@ public class NVMSkipList {
         int logEntryNumber = actionLog.put(ActionLog.DELETED, key);
         objectManager.flush();
 
-        SkipListEntry indexEntry = new SkipListEntry(logEntryNumber, null);
-        writeMaxSkipListEntry(key, indexEntry);
+        SkipListEntry newEntry = new SkipListEntry(logEntryNumber, null);
+        entry.writeMax(newEntry.logEntry, newEntry.value);
     }
 
     private void writeMaxSkipListEntry(int key, SkipListEntry entry) {
