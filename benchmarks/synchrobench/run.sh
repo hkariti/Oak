@@ -6,14 +6,14 @@ java=java
 jarfile="target/oak-benchmarks-synchrobench-0.1.4-SNAPSHOT.jar"
 
 thread="01 04 08 12"
-size="5000000"
-keysize="100"
-valuesize="1000"
+size="500"
+keysize="4"
+valuesize="500"
 #writes="0 50"
 writes="0"
 warmup="0"
 iterations="5"
-duration="30000"
+duration="1000"
 #gcAlgorithms="-XX:+UseParallelOldGC -XX:+UseConcMarkSweepGC -XX:+UseG1GC"
 
 declare -A heap_limit=(["OakMap"]="8g"

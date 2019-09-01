@@ -23,7 +23,7 @@ public class NVMSkipList {
             value = newValue;
         }
     }
-    static final int INIT_ENTRY_COUNT = 1024;
+    static final int INIT_ENTRY_COUNT = 1024*1024*2;
     private final ConcurrentSkipListMap<Integer, SkipListEntry> skipListMap;
     private final NVMObjectManager objectManager;
     private final ActionLog actionLog;
