@@ -1,5 +1,6 @@
 package com.oath.oak.NVM;
 
+import static org.junit.Assert.assertTrue;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.MappedByteBuffer;
@@ -35,7 +36,8 @@ class NVMObjectManager {
     }
 
     public NVMObject allocate(int size) throws OakOutOfMemoryException {
-        int allocatedSize = size + Integer.BYTES;
+        int prefixSize = Integer.BYTES;
+        int allocatedSize = size + prefixSize;
         int currentPosition;
         try {
             currentPosition = position.getAndAddBounded(allocatedSize);
@@ -45,18 +47,19 @@ class NVMObjectManager {
         int endPosition = currentPosition + allocatedSize;
         ByteBuffer mappingView = mappingViewStorage.get();
 
-        mappingView.position(currentPosition);
+        assertTrue(endPosition > 0);
         mappingView.limit(endPosition);
+        mappingView.position(currentPosition + prefixSize);
         ByteBuffer newBuffer = mappingView.slice();
-        newBuffer.putInt(0, size);
+        mappingView.putInt(currentPosition, size);
 
         return new NVMObject(currentPosition, newBuffer);
     }
 
     public void flush() {
-        //synchronized (mapping) {
-        mapping.force();
-        //}
+        synchronized (mapping) {
+            mapping.force();
+        }
     }
 
     public void free(int object) {
@@ -68,6 +71,7 @@ class NVMObjectManager {
         }
 
         ByteBuffer readerMapping = mappingViewStorage.get();
+        readerMapping.clear();
         int size = readerMapping.getInt(pointer);
         int startPosition = pointer + Integer.BYTES;
         int endPosition = startPosition + size;
@@ -76,8 +80,8 @@ class NVMObjectManager {
             throw new IndexOutOfBoundsException();
         }
 
-        readerMapping.position(startPosition);
         readerMapping.limit(endPosition);
+        readerMapping.position(startPosition);
         ByteBuffer objectBuffer = readerMapping.slice();
 
         return objectBuffer;

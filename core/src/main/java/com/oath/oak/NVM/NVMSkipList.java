@@ -32,7 +32,7 @@ public class NVMSkipList {
         skipListMap = new ConcurrentSkipListMap<>();
         objectManager = new NVMObjectManager("test.dat", Integer.MAX_VALUE);
 
-        // Create the recovery map
+        // Create the recovery log
         NVMObject logObject = objectManager.allocate(INIT_ENTRY_COUNT * ActionLog.ENTRY_SIZE);
         actionLog = new ActionLog(logObject.buffer);
     }

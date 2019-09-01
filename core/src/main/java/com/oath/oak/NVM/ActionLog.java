@@ -39,7 +39,7 @@ class ActionLog {
         // This method is NOT thread-safe
         next.set(0);
         for (LongBuffer entry : writableEntries) {
-            entry.put(0);
+            entry.put(0, 0);
         }
     }
 
