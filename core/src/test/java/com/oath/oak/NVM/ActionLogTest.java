@@ -85,26 +85,4 @@ public class ActionLogTest {
 
         assertThrows(IllegalArgumentException.class, () -> actionLog.put(-123, 567));
     }
-
-    @Test
-    public void testAddEntryDoesNotOverrideExisting() {
-        ByteBuffer buf = ByteBuffer.allocate(ActionLog.ENTRY_SIZE * 10);
-
-        actionLog = new ActionLog(buf);
-        // Simulate usecase where next pointers to a valid entry
-        actionLog.put(1, 1);
-        actionLog.next(0);
-
-        int position = actionLog.put(2, 2);
-
-        ActionLogEntry firstEntry = actionLog.get(0);
-        ActionLogEntry secondEntry = actionLog.get(1);
-
-        assertEquals(position, 1);
-        assertEquals(actionLog.next(), 2);
-        assertEquals(firstEntry.key, 1);
-        assertEquals(firstEntry.pointer, 1);
-        assertEquals(secondEntry.key, 2);
-        assertEquals(secondEntry.pointer, 2);
-    }
 }

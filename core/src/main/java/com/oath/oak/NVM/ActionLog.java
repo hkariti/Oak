@@ -11,15 +11,7 @@ class ActionLog {
     static final int DELETED = 0;
     final LongBuffer logBuffer;
     final AtomicInteger next;
-    // Have a global, synchronized list of entries for writing and a thread-local list for reading.
-    // This way we can scan the log in parallel.
     final ArrayList<LongBuffer> writableEntries;
-    ThreadLocal<ArrayList<LongBuffer>> readonlyEntriesStorage = new ThreadLocal<ArrayList<LongBuffer>>() {
-        @Override protected ArrayList<LongBuffer> initialValue() {
-            LongBuffer logBufferView = logBuffer.duplicate();
-            return getEntryList(logBufferView);
-        }
-    };
 
     public ActionLog(ByteBuffer buffer) {
         logBuffer = buffer.asLongBuffer();
@@ -35,12 +27,8 @@ class ActionLog {
             LongBuffer entry = buffer.slice();
             entries.add(entry);
         }
-        
-        return entries;
-    }
 
-    public void perThreadInit() {
-        readonlyEntriesStorage.get();
+        return entries;
     }
 
     public int entries() {
@@ -56,7 +44,7 @@ class ActionLog {
     }
 
     public ActionLogEntry get(int position) {
-        long entry = readonlyEntriesStorage.get().get(position).get(0);
+        long entry = writableEntries.get(position).duplicate().get(0);
         if (!isValid(entry)) {
             return null;
         }
@@ -79,48 +67,15 @@ class ActionLog {
         if (pointer < 0) {
             throw new IllegalArgumentException("pointer should be a positive integer");
         }
-        ArrayList<LongBuffer> readonlyEntries = readonlyEntriesStorage.get();
         int validAndPointer = (1 << 31) | pointer;
         entry = ((long)validAndPointer) << (4*8);
         entry |= key;
 
-        int position = next.get();
-        boolean written = false;
-        long oldEntry;
-        while (!written) {
-            oldEntry = readonlyEntries.get(position).get(0);
-            if (isValid(oldEntry)) {
-                position++;
-                continue;
-            }
-            written = compareAndSetEntry(position, oldEntry, entry);
-            if (!written) {
-                position++;
-            }
-        }
-        writeMaxNext(position + 1);
+        int position = next.getAndIncrement();
+        LongBuffer targetEntry = writableEntries.get(position);
+        targetEntry.put(0, entry);
 
         return position;
-    }
-
-    private boolean compareAndSetEntry(int position, long oldEntry, long newEntry) {
-        LongBuffer entryBuffer = writableEntries.get(position);
-        synchronized (entryBuffer) {
-            long currentEntry = entryBuffer.get(0);
-            if (oldEntry == currentEntry) {
-                entryBuffer.put(0, newEntry);
-                return true;
-            }
-            return false;
-        }
-    }
-
-    private void writeMaxNext(int newPosition) {
-        synchronized (next) {
-            if (next.get() < newPosition) {
-                next.set(newPosition);
-            }
-        }
     }
 
     private boolean isValid(long entry) {
