@@ -78,6 +78,24 @@ public class NVMSkipList {
         entry.writeMax(newEntry.logEntry, newEntry.value);
     }
 
+    public void restore() {
+        // This method is NOT thread-safe
+        int lastValidEntry = 0;
+        skipListMap.clear();
+        for (int i=0; i < actionLog.entries(); i++) {
+            ActionLogEntry logEntry = actionLog.get(i);
+            if (logEntry == null) {
+                continue;
+            }
+            lastValidEntry = i;
+
+            ByteBuffer value = logEntry.pointer != 0 ? objectManager.get(logEntry.pointer) : null;
+            SkipListEntry indexEntry = new SkipListEntry(i, value);
+            skipListMap.put(logEntry.key, indexEntry);
+        }
+        actionLog.next(lastValidEntry);
+    }
+
     private void writeMaxSkipListEntry(int key, SkipListEntry entry) {
         SkipListEntry existingEntry = skipListMap.putIfAbsent(key, entry);
         if (existingEntry == null) {

@@ -96,5 +96,23 @@ public class NVMSkipListTest {
 
         assertEquals(null, retValue);
     }
+
+    @Test
+    public void testRestoreKey() throws Exception {
+        skipList = new NVMSkipList();
+        skipList.clear();
+        int key = 234;
+        ByteBuffer value = ByteBuffer.wrap("asd".getBytes());
+
+        skipList.put(key, value);
+        skipList = new NVMSkipList(); // new instance
+
+        ByteBuffer retValue = skipList.get(key);
+        assertEquals(null, retValue);
+
+        skipList.restore();
+        retValue = skipList.get(key);
+        assertTrue(retValue.compareTo(value) == 0);
+    }
 }
 
